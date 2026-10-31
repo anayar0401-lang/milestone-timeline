@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node scripts/stamp.js --check && node test/smoke.test.js",
+    "test": "node scripts/stamp.js --check && node test/seal.test.js && node test/smoke.test.js",
     "stamp": "node scripts/stamp.js"
   },
   "engines": {

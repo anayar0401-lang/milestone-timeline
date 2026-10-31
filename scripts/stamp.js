@@ -12,7 +12,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const DOCS = path.join(__dirname, '..', 'docs');
-const FILES = ['styles.css', 'store.js', 'app.js'];
+const FILES = ['styles.css', 'seal.js', 'store.js', 'app.js'];
 const indexPath = path.join(DOCS, 'index.html');
 
 const hash = (f) => crypto.createHash('sha1').update(fs.readFileSync(path.join(DOCS, f))).digest('hex').slice(0, 8);

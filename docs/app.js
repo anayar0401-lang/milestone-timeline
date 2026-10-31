@@ -6,6 +6,9 @@ const ALLOWED = /^(image\/(png|jpeg|gif|webp)|application\/pdf)$/;
 const PALETTE = ['#4f46e5', '#0ea5e9', '#14b8a6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#64748b'];
 const UNASSIGNED = '#9aa3b8';
 
+// Public read-only viewer: https://…/?view  (asks for username + password, decrypts timeline.enc in the browser)
+const VIEW = new URLSearchParams(location.search).has('view');
+
 let store; // chosen at boot: server (npm start) or this browser's storage (static hosting)
 
 const state = {
@@ -68,6 +71,8 @@ async function load() {
 
 // ---------- routing ----------
 function route() {
+  if (VIEW && !store) return; // still on the login screen
+  if (VIEW && /^#\/(add|edit)/.test(location.hash)) { location.hash = '#/timeline'; return; }
   const edit = location.hash.match(/^#\/edit\/([0-9a-f]+)$/);
   const view = edit || location.hash === '#/add' ? 'add' : 'timeline';
   if (edit) startEdit(edit[1]);
@@ -85,6 +90,7 @@ window.addEventListener('hashchange', route);
 
 // ---------- project name ----------
 function editProjectName() {
+  if (VIEW) return;
   const h1 = $('projectName');
   const input = el('input', { type: 'text', maxlength: 120, 'aria-label': 'Project name' });
   input.value = state.projectName;
@@ -591,13 +597,92 @@ $('btn-clear').addEventListener('click', async () => {
   } catch (e) { showBanner('Could not clear data: ' + e.message); }
 });
 
-// ---------- boot ----------
-detectStore().then((s) => {
-  store = s;
-  $('foot').hidden = store.mode !== 'browser';
-  return load();
-}).then(() => {
-  // First visit with no data goes straight to the add form.
-  if (!location.hash) location.hash = state.milestones.length ? '#/timeline' : '#/add';
-  else route();
+// ---------- publish a read-only link (editor, browser mode) ----------
+const pubDlg = $('pubdlg');
+$('btn-publish').addEventListener('click', () => {
+  $('pub-result').hidden = true; $('pub-error').hidden = true; $('pub-progress').textContent = '';
+  pubDlg.showModal(); $('pub-user').focus();
 });
+$('pub-close').addEventListener('click', () => pubDlg.close());
+pubDlg.addEventListener('click', (e) => { if (e.target === pubDlg) pubDlg.close(); });
+$('pub-pass').addEventListener('input', () => {
+  const w = Seal.weakness($('pub-pass').value);
+  $('pub-warn').textContent = w; $('pub-warn').hidden = !w || !$('pub-pass').value;
+});
+$('pub-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const user = $('pub-user').value.trim(), pass = $('pub-pass').value;
+  const err = $('pub-error');
+  if (!user || !pass) { err.textContent = 'Enter both a username and a password.'; err.hidden = false; return; }
+  if (!state.milestones.length) { err.textContent = 'There are no milestones to publish yet.'; err.hidden = false; return; }
+  err.hidden = true; $('pub-result').hidden = true;
+  const go = $('pub-go'); go.disabled = true; $('pub-progress').textContent = 'Encrypting… this takes a few seconds';
+  try {
+    await new Promise((r) => setTimeout(r, 30)); // let the message paint before the heavy work
+    const out = await store.publishSnapshot(user, pass, { shrink: $('pub-shrink').checked });
+    const a = el('a', { href: URL.createObjectURL(out.blob), download: 'timeline.enc' });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    const mb = out.blob.size / 1048576;
+    $('pub-summary').textContent = `timeline.enc created — ${plural(out.milestones, 'milestone')}, ${plural(out.files, 'file')}, ${mb < 1 ? Math.max(1, Math.round(out.blob.size / 1024)) + ' KB' : mb.toFixed(1) + ' MB'}`;
+    const link = location.origin + location.pathname.replace(/index\.html$/, '') + '?view';
+    $('pub-link').textContent = link; $('pub-link').href = link;
+    $('pub-size').hidden = mb < 24;
+    $('pub-size').textContent = 'This file is close to or over the ~25 MB limit of GitHub\'s web uploader. Keep "Shrink large images" ticked, or remove very large files from the timeline.';
+    $('pub-result').hidden = false;
+  } catch (e2) { err.textContent = 'Could not create the file: ' + e2.message; err.hidden = false; }
+  finally { go.disabled = false; $('pub-progress').textContent = ''; }
+});
+
+// ---------- public read-only viewer (?view) ----------
+function startViewer() {
+  document.body.classList.add('readonly');
+  for (const v of ['add', 'next', 'timeline']) $('view-' + v).hidden = true;
+  $('view-login').hidden = false;
+  $('tab-timeline').hidden = true; $('btn-lock').hidden = true; // nothing to show until unlocked
+  $('login-user').focus();
+  let bytes; // downloaded once, reused for retries
+  const showError = (msg) => { $('login-error').textContent = msg; $('login-error').hidden = !msg; };
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const user = $('login-user').value, pass = $('login-pass').value;
+    if (!user.trim() || !pass) { showError('Enter your username and password.'); return; }
+    showError('');
+    const go = $('login-go'); go.disabled = true; $('login-progress').textContent = 'Unlocking…';
+    try {
+      if (!bytes) {
+        let res;
+        try { res = await fetch('timeline.enc', { cache: 'no-store' }); }
+        catch { throw new Error('Could not reach the server. Check your connection and try again.'); }
+        if (res.status === 404) throw new Error('No timeline has been published yet.');
+        if (!res.ok) throw new Error(`Could not load the timeline (error ${res.status}).`);
+        bytes = new Uint8Array(await res.arrayBuffer());
+      }
+      const snapshot = await Seal.open(bytes, user, pass);
+      store = viewerStore(snapshot);
+      await load();
+      $('login-pass').value = '';
+      $('view-login').hidden = true; $('tab-timeline').hidden = false; $('btn-lock').hidden = false;
+      if (location.hash === '#/timeline') route(); else location.hash = '#/timeline';
+    } catch (err) {
+      showError(err.message);
+      if (err.code === 'BAD_FILE') bytes = undefined;
+    } finally { go.disabled = false; $('login-progress').textContent = ''; }
+  });
+  $('btn-lock').addEventListener('click', () => location.reload());
+}
+
+// ---------- boot ----------
+if (VIEW) {
+  startViewer();
+} else {
+  detectStore().then((s) => {
+    store = s;
+    $('foot').hidden = store.mode !== 'browser';
+    return load();
+  }).then(() => {
+    // First visit with no data goes straight to the add form.
+    if (!location.hash) location.hash = state.milestones.length ? '#/timeline' : '#/add';
+    else route();
+  });
+}

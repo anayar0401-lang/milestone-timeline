@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Milestone Timeline</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Ccircle cx='16' cy='16' r='5' fill='white'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=194f2a02">
+  <link rel="stylesheet" href="styles.css?v=5287ed17">
 </head>
 <body>
   <header class="topbar">
@@ -21,7 +21,8 @@
       </div>
       <nav class="tabs" aria-label="Views">
         <a href="#/timeline" id="tab-timeline" class="tab">Timeline <span class="count" id="count">0</span></a>
-        <a href="#/add" id="tab-add" class="tab">+ Add milestone</a>
+        <a href="#/add" id="tab-add" class="tab editonly">+ Add milestone</a>
+        <button type="button" class="btn small viewonly" id="btn-lock" title="Lock and sign out">Lock</button>
         <button type="button" class="iconbtn" id="btn-theme" aria-label="Switch between light and dark" title="Switch between light and dark">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>
         </button>
@@ -31,6 +32,27 @@
 
   <main class="wrap">
     <div id="banner" class="banner" role="alert" hidden></div>
+
+    <!-- LOGIN (read-only viewer: ?view) -->
+    <section id="view-login" class="card login" hidden>
+      <h2>View the milestone timeline</h2>
+      <p class="muted lead">Enter the username and password you were given. This is a read-only view.</p>
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="login-user">Username</label>
+          <input type="text" id="login-user" autocomplete="username" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="login-pass">Password</label>
+          <input type="password" id="login-pass" autocomplete="current-password">
+        </div>
+        <p class="error" id="login-error" role="alert" hidden></p>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="login-go">Unlock</button>
+          <span class="muted small" id="login-progress" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
 
     <!-- ADD VIEW -->
     <section id="view-add" hidden>
@@ -114,9 +136,9 @@
         <div class="toolbar-actions">
           <button class="btn small" id="btn-sort">Oldest first</button>
           <button class="btn small" id="btn-toggle">Expand all</button>
-          <button class="btn small" id="btn-processes">Processes &amp; colours</button>
+          <button class="btn small editonly" id="btn-processes">Processes &amp; colours</button>
           <button class="btn small" id="btn-share" title="Clean view for screenshots or PDF">Share view</button>
-          <a class="btn small primary" href="#/add">+ Add milestone</a>
+          <a class="btn small primary editonly" href="#/add">+ Add milestone</a>
         </div>
       </div>
       <div class="filters" id="filters" hidden>
@@ -136,15 +158,51 @@
     </section>
   </main>
 
-  <footer class="wrap foot" id="foot" hidden>
+  <footer class="wrap foot editonly" id="foot" hidden>
     <p class="muted small">
       Your milestones are saved in <strong>this browser on this device</strong> — clearing site data or using another browser won't show them.
       <button type="button" class="linkbtn" id="btn-export">Download backup</button> ·
       <button type="button" class="linkbtn" id="btn-import">Restore backup</button> ·
       <button type="button" class="linkbtn danger" id="btn-clear">Clear all data</button>
+      <br><button type="button" class="linkbtn" id="btn-publish">Publish a read-only link…</button>
     </p>
     <input type="file" id="import-file" accept="application/json,.json" hidden>
   </footer>
+
+  <dialog id="pubdlg" class="dlg" aria-label="Publish a read-only link">
+    <div class="dlg-head">
+      <h2>Publish a read-only link</h2>
+      <button type="button" class="dlg-close" id="pub-close" aria-label="Close">×</button>
+    </div>
+    <p class="muted small">Creates an <strong>encrypted copy</strong> of your whole timeline (milestones, notes, images, PDFs). Put that one file on GitHub and anyone with the link <em>and</em> the username + password can view it, read-only. Nothing leaves your computer until you upload the file yourself.</p>
+    <form id="pub-form" novalidate>
+      <div class="field">
+        <label for="pub-user">Username</label>
+        <input type="text" id="pub-user" maxlength="60" autocomplete="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="pub-pass">Password</label>
+        <input type="password" id="pub-pass" autocomplete="new-password">
+        <p class="warn small" id="pub-warn" hidden></p>
+      </div>
+      <label class="checkrow"><input type="checkbox" id="pub-shrink" checked> Shrink large images (recommended — keeps the file small enough to upload)</label>
+      <p class="error" id="pub-error" role="alert" hidden></p>
+      <div class="actions">
+        <button type="submit" class="btn primary" id="pub-go">Create file</button>
+        <span class="muted small" id="pub-progress" aria-live="polite"></span>
+      </div>
+    </form>
+    <div id="pub-result" class="pub-result" hidden>
+      <h3>✓ <span id="pub-summary"></span></h3>
+      <ol>
+        <li>On GitHub, open your repository's <strong>docs</strong> folder → <strong>Add file → Upload files</strong>, drop in the downloaded <code>timeline.enc</code> (replace the old one), and commit.</li>
+        <li>Wait a few minutes for GitHub Pages to update.</li>
+        <li>Share this link — and the username and password, ideally separately:<br><a id="pub-link" target="_blank" rel="noopener"></a></li>
+      </ol>
+      <p class="warn small" id="pub-size" hidden></p>
+      <p class="muted small">Whenever you change the timeline, create and upload a new file. The link stays the same.</p>
+    </div>
+  </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -173,7 +231,8 @@
     <div class="lb-foot"><span id="lb-name"></span> <a id="lb-open" target="_blank" rel="noopener">Open in new tab ↗</a></div>
   </dialog>
 
-  <script src="store.js?v=9ef6ed29"></script>
-  <script src="app.js?v=2ad152fc"></script>
+  <script src="seal.js?v=16a2c359"></script>
+  <script src="store.js?v=92925fba"></script>
+  <script src="app.js?v=01812c71"></script>
 </body>
 </html>

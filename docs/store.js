@@ -11,6 +11,8 @@
  *   deleteMilestone(id)
  *   createProcess({name,color}) / updateProcess(id,{name,color}) / deleteProcess(id)   (deleting unassigns its milestones)
  *   exportBackup() / importBackup(text) / clearAll()     (browser mode only)
+ *   publishSnapshot(user, pass)   encrypted read-only copy for the public viewer   (browser mode only)
+ * viewerStore(snapshot)           read-only store used by the public viewer (?view)
  *
  * 'server'  – the Node server (npm start): data in data/ on disk.
  * 'browser' – static hosting (GitHub Pages): data in this browser's IndexedDB.
@@ -97,6 +99,57 @@ function serverStore() {
     createProcess: (data) => call('api/processes', json('POST', data)),
     updateProcess: (id, data) => call('api/processes/' + id, json('PUT', data)),
     deleteProcess: (id) => call('api/processes/' + id, { method: 'DELETE' }),
+  };
+}
+
+// Re-encode a big image as a JPEG (max 1800 px on the long side). Keeps the original if that would not be smaller.
+async function shrinkImage(blob) {
+  if (blob.size < 400 * 1024) return blob;
+  try {
+    const bmp = await createImageBitmap(blob);
+    const scale = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bmp.width * scale)); canvas.height = Math.max(1, Math.round(bmp.height * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); // transparent PNGs get a white background
+    ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    if (bmp.close) bmp.close();
+    const out = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+    return out && out.size < blob.size ? out : blob;
+  } catch { return blob; }
+}
+
+// --------------------------------------------------------------- viewer (read-only)
+// Built from a decrypted published snapshot. Every write is refused.
+function viewerStore(snapshot) {
+  const readOnly = () => Promise.reject(new Error('This timeline is read-only.'));
+  let cached;
+  const build = async () => {
+    const processes = (Array.isArray(snapshot.processes) ? snapshot.processes : [])
+      .filter((x) => x && ID_RE.test(x.id) && COLOR_RE.test(x.color || '') && clean(x.name, 60))
+      .map((x) => ({ id: x.id, name: clean(x.name, 60), color: x.color.toLowerCase() }));
+    const known = new Set(processes.map((x) => x.id));
+    const milestones = [];
+    for (const src of Array.isArray(snapshot.milestones) ? snapshot.milestones : []) {
+      let fields;
+      try { fields = validateMilestone({ ...src, processId: known.has(src && src.processId) ? src.processId : null }); } catch { continue; }
+      const media = [];
+      for (const f of Array.isArray(src.media) ? src.media : []) {
+        if (!f || typeof f.data !== 'string' || !f.data.startsWith('data:')) continue;
+        const blob = await (await fetch(f.data)).blob();
+        const type = sniff(new Uint8Array(await blob.slice(0, 16).arrayBuffer()));
+        if (!type) continue;
+        media.push({ id: String(f.id || newId()), file: '', originalName: clean(f.originalName, 200) || 'file', kind: type.kind, size: blob.size, url: URL.createObjectURL(new Blob([blob], { type: type.mime })) });
+      }
+      milestones.push({ id: String(src.id), ...fields, media, createdAt: typeof src.createdAt === 'string' ? src.createdAt : '' });
+    }
+    return { projectName: clean(snapshot.projectName, 120) || DEFAULT_PROJECT, processes, milestones };
+  };
+  return {
+    mode: 'view',
+    async getState() { return cached || (cached = await build()); },
+    setProjectName: readOnly, createMilestone: readOnly, updateMilestone: readOnly, addMedia: readOnly, deleteMedia: readOnly,
+    deleteMilestone: readOnly, createProcess: readOnly, updateProcess: readOnly, deleteProcess: readOnly,
   };
 }
 
@@ -257,19 +310,34 @@ function browserStore() {
       await done(t);
     },
 
-    // Single JSON file containing everything (media embedded as data URLs).
-    async exportBackup() {
+    // Everything as one object (media embedded as data URLs). Used for backups and for the published snapshot.
+    // shrink: re-encode big images (> 400 KB) as JPEG up to 1800 px so the published file stays small.
+    async collectBackup({ shrink = false } = {}) {
       const t = await tx(['meta', 'milestones', 'files'], 'readonly');
       const [name, processes, milestones, files] = await Promise.all([
         p(t.objectStore('meta').get('projectName')), getProcesses(t.objectStore('meta')),
         p(t.objectStore('milestones').getAll()), p(t.objectStore('files').getAll())]);
       const blobs = new Map(files.map((f) => [f.id, f.blob]));
       for (const m of milestones) {
-        for (const f of m.media) f.data = blobs.has(f.id) ? await blobToDataUrl(blobs.get(f.id)) : null;
+        for (const f of m.media) {
+          let blob = blobs.get(f.id);
+          if (blob && shrink && f.kind === 'image') { blob = await shrinkImage(blob); f.size = blob.size; }
+          f.data = blob ? await blobToDataUrl(blob) : null;
+        }
         m.media = m.media.filter((f) => f.data);
       }
-      const text = JSON.stringify({ app: 'milestone-timeline', version: 2, exportedAt: new Date().toISOString(), projectName: name || DEFAULT_PROJECT, processes, milestones });
-      return new Blob([text], { type: 'application/json' });
+      return { app: 'milestone-timeline', version: 2, exportedAt: new Date().toISOString(), projectName: name || DEFAULT_PROJECT, processes, milestones };
+    },
+
+    async exportBackup() {
+      return new Blob([JSON.stringify(await this.collectBackup())], { type: 'application/json' });
+    },
+
+    // Encrypted, read-only copy of the whole timeline for the public viewer (see seal.js).
+    async publishSnapshot(username, password, { shrink = true } = {}) {
+      const snapshot = await this.collectBackup({ shrink });
+      const bytes = await Seal.seal(snapshot, username, password);
+      return { blob: new Blob([bytes], { type: 'application/octet-stream' }), milestones: snapshot.milestones.length, files: snapshot.milestones.reduce((n, m) => n + m.media.length, 0) };
     },
 
     // Adds processes and milestones that are not already present (matched by id); never deletes or overwrites.

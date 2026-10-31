@@ -53,7 +53,7 @@ main.wrap { padding-top: 24px; padding-bottom: 80px; }
 .field { margin-bottom: 22px; }
 label { display: block; font-weight: 600; margin-bottom: 6px; font-size: .95rem; }
 .req { color: var(--danger); } .opt { color: var(--muted); font-weight: 400; font-size: .85rem; }
-input[type=text], input[type=date], textarea { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 13px; }
+input[type=text], input[type=password], input[type=date], textarea { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 13px; }
 input[type=date] { max-width: 260px; color-scheme: light dark; }
 textarea { resize: vertical; min-height: 110px; }
 input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -264,3 +264,22 @@ body.share main.wrap { padding-top: 28px; }
   .panel, .datebtn { box-shadow: none; }
   .media button { cursor: default; }
 }
+
+/* read-only viewer (?view) */
+.viewonly { display: none; }
+body.readonly .viewonly { display: inline-block; }
+body.readonly .editonly, body.readonly #empty, body.readonly .entry-actions, body.readonly .kv-proc { display: none !important; }
+body.readonly #projectName { cursor: default; pointer-events: none; }
+.login { max-width: 440px; margin: 40px auto; }
+.login .actions { margin-top: 6px; }
+
+/* publish dialog */
+.checkrow { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; font-size: .9rem; margin: 4px 0 16px; cursor: pointer; }
+.checkrow input { margin-top: 4px; }
+.dlg h3 { margin: 16px 0 8px; }
+.dlg .field { margin-bottom: 16px; }
+.dlg .warn { text-align: left; margin: 8px 0 0; }
+.pub-result { margin-top: 18px; padding-top: 4px; border-top: 1px solid var(--border); }
+.pub-result ol { padding-left: 20px; margin: 8px 0; } .pub-result li { margin-bottom: 8px; }
+.pub-result code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-size: .88em; }
+.pub-result a { color: var(--accent); font-weight: 600; overflow-wrap: anywhere; }

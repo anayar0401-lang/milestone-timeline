@@ -22,6 +22,18 @@ Data stays in your browser, so the way to share is a screenshot or PDF.
   - **P** opens the print dialog, choose *Save as PDF*. Printing is always white, clean and page-break-friendly, whatever the screen theme. Good for timelines too long for one screenshot.
   - **Esc** returns to the normal view.
 
+## Public read-only link (username + password)
+
+For people who only need to *look*. Your data stays in your browser; you publish an **encrypted snapshot** that the public viewer page unlocks with a username + password.
+
+1. In the editor, footer → **Publish a read-only link…** → choose a username and password → **Create file**. This downloads `timeline.enc` (milestones, notes, images and PDFs, encrypted; large images are shrunk so it stays small).
+2. On GitHub, open the repo's `docs` folder → **Add file → Upload files** → drop in `timeline.enc` (replace the old one) → commit. (GitHub's web uploader accepts files up to about 25 MB.)
+3. Share `https://<your-username>.github.io/<repo-name>/?view` plus the username and password.
+
+Viewers see the timeline exactly as you do (expand, filter by process, group by process, Share view, light/dark) but cannot change anything. After changing the timeline, create and upload a new `timeline.enc`; the link stays the same.
+
+**How safe is it?** GitHub Pages is static hosting, so it cannot check a login. Instead the file is encrypted with AES-256-GCM using a key derived from username + password (PBKDF2-SHA256, 600,000 rounds); without them it is unreadable, and the password is never stored anywhere. But the file is public, so anyone can download it and guess passwords offline with no limit. **The password is the whole protection:** a short one (like 4 letters) can be cracked in hours on one computer or minutes with a rented GPU; 12+ characters (e.g. four random words) cannot. The publish dialog warns about short passwords. For content that must never leak, use a host with real access control instead.
+
 ## Host on GitHub Pages
 
 1. Push this repo to GitHub (public repo for the free plan).
@@ -76,7 +88,7 @@ After editing anything in `docs/*.js` or `docs/styles.css`, run `npm run stamp`.
 npm test
 ```
 
-Checks the cache-busting stamps, then an API smoke test (validation, processes, editing, uploads, file-type checking, path traversal, persistence across restart, delete). Uses a temporary data folder, so it never touches your real data.
+Checks the cache-busting stamps, the encryption module (round trip, wrong credentials, tampering), then an API smoke test (validation, processes, editing, uploads, file-type checking, path traversal, persistence across restart, delete). Uses a temporary data folder, so it never touches your real data.
 
 ## Notes
 

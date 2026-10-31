@@ -100,8 +100,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); box-sh
 .datebtn .day { display: block; font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
 .datebtn .yr { display: block; font-size: .72rem; opacity: .8; }
 .panel { grid-column: 3; background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--pc, var(--border)); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 18px; min-width: 0; }
-.panel .hint { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: .9rem; cursor: pointer; min-height: 40px; }
-.panel .hint .full { font-weight: 600; color: var(--text); }
+.panel .hint { display: flex; align-items: center; gap: 12px; cursor: pointer; min-height: 40px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .78rem; font-weight: 600; }
 .details { display: none; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
 .entry.open .details { display: block; }
@@ -203,7 +202,21 @@ input[type=color] { width: 40px; height: 36px; padding: 2px; border: 1.5px solid
   .panel { border-left-width: 5px; }
 }
 
-/* collapsed card: name preview + "Expand ↓" cue */
-.peek { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
-.expand { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: .85rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+/* card header: title + notes preview on the left, tags + Expand/Collapse cue on the right */
+.hint-main { flex: 1; min-width: 0; }
+.hint-title { font-weight: 600; overflow-wrap: anywhere; }
+.hint-notes { color: var(--muted); font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hint-side { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: none; margin-left: auto; }
+.expand { display: inline-flex; align-items: center; gap: 4px; font-size: .85rem; font-weight: 600; color: var(--muted); white-space: nowrap; margin-left: 6px; }
 .panel .hint:hover .expand { color: var(--pc, var(--accent)); }
+@media (max-width: 560px) {
+  .panel .hint { flex-wrap: wrap; gap: 6px; }
+  .hint-main { flex-basis: 100%; }
+  .hint-main:empty { display: none; }
+  .hint-side { width: 100%; justify-content: flex-start; margin-left: 0; }
+  .hint-side .expand { margin-left: auto; }
+}
+.pill, .chip { white-space: nowrap; }
+.pill { max-width: 100%; min-width: 0; }
+.pill-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@media (max-width: 560px) { .hint-side { flex-wrap: wrap; } }

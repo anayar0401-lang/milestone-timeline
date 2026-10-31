@@ -143,7 +143,7 @@ function viewerStore(snapshot) {
       }
       milestones.push({ id: String(src.id), ...fields, media, createdAt: typeof src.createdAt === 'string' ? src.createdAt : '' });
     }
-    return { projectName: clean(snapshot.projectName, 120) || DEFAULT_PROJECT, processes, milestones };
+    return { projectName: clean(snapshot.projectName, 120) || DEFAULT_PROJECT, processes, milestones, publishedAt: typeof snapshot.exportedAt === 'string' ? snapshot.exportedAt : null };
   };
   return {
     mode: 'view',

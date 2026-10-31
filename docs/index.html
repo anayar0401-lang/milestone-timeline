@@ -195,9 +195,12 @@
     <div id="pub-result" class="pub-result" hidden>
       <h3>✓ <span id="pub-summary"></span></h3>
       <ol>
-        <li>On GitHub, open your repository's <strong>docs</strong> folder → <strong>Add file → Upload files</strong>, drop in the downloaded <code>timeline.enc</code> (replace the old one), and commit.</li>
-        <li>Wait a few minutes for GitHub Pages to update.</li>
-        <li>Share this link — and the username and password, ideally separately:<br><a id="pub-link" target="_blank" rel="noopener"></a></li>
+        <li>Upload the downloaded file to the <strong>docs</strong> folder on GitHub, then <strong>Commit</strong>.
+          <span id="pub-upload">Use this link, which opens the uploader on the right folder: <a id="pub-upload-link" target="_blank" rel="noopener"></a></span>
+          <span id="pub-upload-generic" hidden>Open your repository → the <strong>docs</strong> folder → <em>Add file → Upload files</em>.</span>
+          <br><strong>Two common slips:</strong> uploading from the repository's front page puts it in the wrong folder (the site only reads <code>docs</code>), and if your browser saved the file as <code>timeline (1).enc</code>, rename it to exactly <code>timeline.enc</code> first.</li>
+        <li>Wait a few minutes for GitHub Pages to update, then open the link below, unlock it, and check that the summary line at the top of the timeline ends with <strong>Published <span id="pub-when"></span></strong> (this file's time).</li>
+        <li>Share the link — and the username and password, ideally separately:<br><a id="pub-link" target="_blank" rel="noopener"></a></li>
       </ol>
       <p class="warn small" id="pub-size" hidden></p>
       <p class="muted small">Whenever you change the timeline, create and upload a new file. The link stays the same.</p>
@@ -232,7 +235,7 @@
   </dialog>
 
   <script src="seal.js?v=16a2c359"></script>
-  <script src="store.js?v=92925fba"></script>
-  <script src="app.js?v=01812c71"></script>
+  <script src="store.js?v=0afadb65"></script>
+  <script src="app.js?v=6cb0bf96"></script>
 </body>
 </html>

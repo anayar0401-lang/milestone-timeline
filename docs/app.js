@@ -12,7 +12,7 @@ const VIEW = new URLSearchParams(location.search).has('view');
 let store; // chosen at boot: server (npm start) or this browser's storage (static hosting)
 
 const state = {
-  projectName: '', processes: [], milestones: [],
+  projectName: '', processes: [], milestones: [], publishedAt: null,
   newestFirst: false, open: new Set(), pending: [],
   groupBy: lsGet('mt.groupBy') === 'process', filter: 'all', // 'all' | 'none' | <processId>
   present: false, // Share view (clean layout for screenshots / PDF)
@@ -38,6 +38,7 @@ function el(tag, props = {}, ...kids) {
 const parseDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const fmt = (s, opts) => new Intl.DateTimeFormat(undefined, opts).format(parseDate(s));
 const fmtSize = (b) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`);
+const fmtStamp = (iso) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const inkFor = (hex) => { const n = parseInt(hex.slice(1), 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 150 ? '#111827' : '#ffffff'; };
 const procById = (id) => state.processes.find((p) => p.id === id) || null;
@@ -57,6 +58,7 @@ async function load() {
     state.projectName = s.projectName;
     state.processes = s.processes;
     state.milestones = s.milestones;
+    state.publishedAt = s.publishedAt || null;
     if (state.filter !== 'all' && state.filter !== 'none' && !procById(state.filter)) state.filter = 'all';
     showBanner('');
   } catch (e) {
@@ -324,7 +326,7 @@ function renderTimeline() {
   const dates = list.map((m) => m.date).sort();
   const monthYear = { month: 'short', year: 'numeric' };
   $('summary').textContent = list.length
-    ? `${list.length === total ? plural(total, 'milestone') : `${list.length} of ${total} milestones`} · ${fmt(dates[0], monthYear)} → ${fmt(dates.at(-1), monthYear)}`
+    ? `${list.length === total ? plural(total, 'milestone') : `${list.length} of ${total} milestones`} · ${fmt(dates[0], monthYear)} → ${fmt(dates.at(-1), monthYear)}${VIEW && state.publishedAt ? ` · Published ${fmtStamp(state.publishedAt)}` : ''}`
     : '';
 
   const grouped = state.groupBy && state.processes.length > 0;
@@ -435,7 +437,7 @@ function renderShareHead(list) {
   $('share-title').textContent = state.projectName;
   const proc = procById(state.filter);
   const scope = state.filter === 'none' ? ' · No process' : proc ? ` · ${proc.name}` : '';
-  const asOf = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(new Date());
+  const asOf = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(VIEW && state.publishedAt ? new Date(state.publishedAt) : new Date());
   $('share-sub').textContent = `Milestone timeline${scope} · ${plural(list.length, 'milestone')} · as of ${asOf}`;
   $('share-legend').replaceChildren(...state.processes
     .map((p) => ({ p, n: list.filter((m) => m.processId === p.id).length }))
@@ -598,6 +600,12 @@ $('btn-clear').addEventListener('click', async () => {
 });
 
 // ---------- publish a read-only link (editor, browser mode) ----------
+// Direct link to GitHub's uploader pointed at the docs folder (the only folder Pages serves), derived from the site address.
+function githubUploadUrl(loc = location) {
+  const owner = loc.hostname.match(/^([a-z0-9-]+)\.github\.io$/i);
+  const repo = loc.pathname.split('/').filter(Boolean)[0];
+  return owner && repo && !/\.html?$/i.test(repo) ? `https://github.com/${owner[1]}/${repo}/upload/main/docs` : '';
+}
 const pubDlg = $('pubdlg');
 $('btn-publish').addEventListener('click', () => {
   $('pub-result').hidden = true; $('pub-error').hidden = true; $('pub-progress').textContent = '';
@@ -624,6 +632,10 @@ $('pub-form').addEventListener('submit', async (e) => {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
     const mb = out.blob.size / 1048576;
+    $('pub-when').textContent = fmtStamp(new Date().toISOString());
+    const up = githubUploadUrl();
+    $('pub-upload').hidden = !up; $('pub-upload-generic').hidden = !!up;
+    if (up) { $('pub-upload-link').href = up; $('pub-upload-link').textContent = up.replace('https://', ''); }
     $('pub-summary').textContent = `timeline.enc created — ${plural(out.milestones, 'milestone')}, ${plural(out.files, 'file')}, ${mb < 1 ? Math.max(1, Math.round(out.blob.size / 1024)) + ' KB' : mb.toFixed(1) + ' MB'}`;
     const link = location.origin + location.pathname.replace(/index\.html$/, '') + '?view';
     $('pub-link').textContent = link; $('pub-link').href = link;

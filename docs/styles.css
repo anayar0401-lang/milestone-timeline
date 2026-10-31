@@ -202,3 +202,8 @@ input[type=color] { width: 40px; height: 36px; padding: 2px; border: 1.5px solid
   .proc-list li { flex-wrap: wrap; }
   .panel { border-left-width: 5px; }
 }
+
+/* collapsed card: name preview + "Expand ↓" cue */
+.peek { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
+.expand { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: .85rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.panel .hint:hover .expand { color: var(--pc, var(--accent)); }

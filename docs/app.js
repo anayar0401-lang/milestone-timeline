@@ -353,11 +353,17 @@ function entryNode(m) {
   };
   btn.addEventListener('click', toggle);
 
+  // Collapsed cards show the first 20 characters of the milestone name, and an "Expand ↓" cue.
+  const chars = [...m.name];
+  const peek = chars.length > 20 ? chars.slice(0, 20).join('').trimEnd() + '…' : m.name;
+  const expand = el('span', { class: 'expand', text: 'Expand' });
+  expand.insertAdjacentHTML('beforeend', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>');
   const hint = el('div', { class: 'hint', onclick: toggle },
     el('span', { class: 'full', text: fmt(m.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }),
+    open ? null : el('span', { class: 'peek', title: m.name, text: peek }),
     proc ? el('span', { class: 'pill', text: proc.name }) : null,
     m.media.length ? el('span', { class: 'chip', text: `📎 ${m.media.length}` }) : null,
-    open ? null : el('span', { text: 'Click the date to see details' }));
+    open ? null : expand);
 
   // quick process assignment, saved immediately
   const procSelect = el('select', { 'aria-label': 'Process', onchange: async (e) => {

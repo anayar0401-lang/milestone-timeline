@@ -2,9 +2,29 @@
 
 A simple project-milestone tracker. Add milestones (date, media, name, responsible team, notes) and review the project history on an expandable timeline.
 
-Zero dependencies — only Node.js 18+ is needed. No `npm install`, no internet required.
+Two ways to run it — same app, same screens:
 
-## Run
+| | Where data is saved | Needs |
+| --- | --- | --- |
+| **GitHub Pages** (recommended for a demo) | This browser (IndexedDB) | Nothing — just open the link |
+| **Local Node server** (`npm start`) | `data/` folder on disk | Node.js 18+ (no `npm install`) |
+
+The app picks automatically: if a Node server is answering, it uses that; otherwise it saves in the browser.
+
+## Host on GitHub Pages
+
+1. Push this repo to GitHub (public repo for the free plan).
+2. Repo **Settings → Pages → Build and deployment → Source: Deploy from a branch**, branch `main`, folder **`/docs`**, Save.
+3. After a minute the site is live at `https://<your-username>.github.io/<repo-name>/`.
+
+The repo contains no project data, so a public repo is fine. Your milestones live only in the browser you use.
+
+**Browser-storage tips**
+- Use the same browser and device each time; don't use a private/incognito window.
+- Don't "clear site data" for the site. The app asks the browser to keep its data, but it can't force it.
+- Use **Download backup** (footer) before the demo and whenever you've added a lot. **Restore backup** adds back anything missing and never deletes or overwrites existing entries.
+
+## Run locally with Node
 
 ```bash
 npm start
@@ -21,7 +41,7 @@ Open http://localhost:3000. (Use `PORT=8080 npm start` to change the port, `HOST
 - After saving, the app asks **"Do you have more milestones to add?"** — add another or go to the timeline.
 - **Timeline** — every milestone date is a node on the timeline. Click a date to expand the three fields and any media (click an image/PDF to view it full-size). Sort oldest/newest first, expand/collapse all, or delete a milestone. Click the project name in the header to rename it.
 
-## Your data is kept
+## Local server data
 
 Nothing is wiped between uses or restarts. Everything lives in `data/`:
 
@@ -43,4 +63,5 @@ API smoke test (validation, uploads, file-type checking, path traversal, persist
 ## Notes
 
 - Uploads: PNG, JPG, GIF, WebP and PDF, max 50 MB each. The type is verified from the file contents, not just the extension.
-- Binds to `127.0.0.1` by default and has no login — intended for local use.
+- The front end is in `docs/` (served by both the Node server and GitHub Pages); `docs/store.js` holds the two storage backends.
+- The Node server binds to `127.0.0.1` by default and has no login — intended for local use.

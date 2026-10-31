@@ -1,7 +1,7 @@
 'use strict';
 
 const $ = (id) => document.getElementById(id);
-const MAX_BYTES = 50 * 1024 * 1024;
+// MAX_BYTES comes from store.js
 const ALLOWED = /^(image\/(png|jpeg|gif|webp)|application\/pdf)$/;
 
 const state = { projectName: '', milestones: [], newestFirst: false, open: new Set(), pending: [] };
@@ -22,24 +22,18 @@ const parseDate = (s) => { const [y, m, d] = s.split('-').map(Number); return ne
 const fmt = (s, opts) => new Intl.DateTimeFormat(undefined, opts).format(parseDate(s));
 const fmtSize = (b) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
-async function api(path, opts = {}) {
-  const res = await fetch(path, opts);
-  let body = null;
-  try { body = await res.json(); } catch { /* no body */ }
-  if (!res.ok) throw Object.assign(new Error((body && body.error) || `Request failed (${res.status})`), { body });
-  return body;
-}
+let store; // chosen at boot: server (npm start) or this browser's storage (static hosting)
 
 function showBanner(msg) { const b = $('banner'); b.textContent = msg; b.hidden = !msg; }
 
 async function load() {
   try {
-    const s = await api('/api/state');
+    const s = await store.getState();
     state.projectName = s.projectName;
     state.milestones = s.milestones;
     showBanner('');
   } catch (e) {
-    showBanner('Could not reach the server: ' + e.message);
+    showBanner('Could not load your milestones: ' + e.message);
   }
   $('projectName').textContent = state.projectName || 'Project Milestones';
   document.title = `${state.projectName || 'Milestone Timeline'} · Milestones`;
@@ -71,7 +65,7 @@ function editProjectName() {
     const v = input.value.trim();
     input.replaceWith(h1);
     if (commit && v && v !== state.projectName) {
-      try { await api('/api/project', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: v }) }); await load(); }
+      try { await store.setProjectName(v); await load(); }
       catch (e) { showBanner(e.message); }
     }
   };
@@ -138,13 +132,11 @@ $('form').addEventListener('submit', async (e) => {
   const btn = $('save'); btn.disabled = true;
   const failed = [];
   try {
-    const m = await api('/api/milestones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const m = await store.createMilestone(data);
     for (let i = 0; i < files.length; i++) {
-      $('progress').textContent = `Uploading file ${i + 1} of ${files.length}…`;
-      try {
-        await api(`/api/milestones/${m.id}/media?filename=${encodeURIComponent(files[i].file.name)}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: files[i].file });
-      } catch (err) { failed.push(`${files[i].file.name} (${err.message})`); }
+      $('progress').textContent = `Saving file ${i + 1} of ${files.length}…`;
+      try { await store.addMedia(m.id, files[i].file); }
+      catch (err) { failed.push(`${files[i].file.name} (${err.message})`); }
     }
     $('progress').textContent = '';
     await load();
@@ -231,7 +223,7 @@ function entryNode(m) {
   dl.append(el('div', { class: 'entry-actions' },
     el('button', { class: 'btn small danger', type: 'button', text: 'Delete milestone', onclick: async () => {
       if (!confirm(`Delete "${m.name}" (${fmt(m.date, { dateStyle: 'medium' })}) and its media? This cannot be undone.`)) return;
-      try { await api('/api/milestones/' + m.id, { method: 'DELETE' }); state.open.delete(m.id); await load(); renderTimeline(); }
+      try { await store.deleteMilestone(m.id); state.open.delete(m.id); await load(); renderTimeline(); }
       catch (e) { showBanner(e.message); }
     } })));
 
@@ -244,7 +236,7 @@ function kv(label, value, cls = '', fallback = '') {
 }
 
 function mediaNode(f) {
-  const url = '/uploads/' + encodeURIComponent(f.file);
+  const url = f.url;
   const inner = f.kind === 'image'
     ? el('img', { src: url, alt: f.originalName, loading: 'lazy' })
     : el('div', { class: 'pdf' }, el('b', { text: 'PDF' }), el('span', { text: f.originalName }));
@@ -272,8 +264,32 @@ $('lb-close').addEventListener('click', () => lb.close());
 lb.addEventListener('click', (e) => { if (e.target === lb) lb.close(); });
 lb.addEventListener('close', () => $('lb-body').replaceChildren());
 
+// ---------- backup / restore (browser storage only) ----------
+$('btn-export').addEventListener('click', async () => {
+  try {
+    const blob = await store.exportBackup();
+    const a = el('a', { href: URL.createObjectURL(blob), download: `milestones-backup-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (e) { showBanner('Backup failed: ' + e.message); }
+});
+$('btn-import').addEventListener('click', () => $('import-file').click());
+$('import-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  try {
+    const added = await store.importBackup(await file.text());
+    await load(); route();
+    alert(added ? `Restored ${added} milestone${added > 1 ? 's' : ''} from the backup.` : 'Nothing new to restore — those milestones are already here.');
+  } catch (err) { showBanner(err.message); }
+});
+
 // ---------- boot ----------
-load().then(() => {
+detectStore().then((s) => {
+  store = s;
+  $('foot').hidden = store.mode !== 'browser';
+  return load();
+}).then(() => {
   // First visit with no data goes straight to the add form.
   if (!location.hash) location.hash = state.milestones.length ? '#/timeline' : '#/add';
   else route();

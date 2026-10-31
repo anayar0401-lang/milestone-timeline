@@ -108,12 +108,22 @@
     </section>
   </main>
 
+  <footer class="wrap foot" id="foot" hidden>
+    <p class="muted small">
+      Your milestones are saved in <strong>this browser on this device</strong> — clearing site data or using another browser won't show them.
+      <button type="button" class="linkbtn" id="btn-export">Download backup</button> ·
+      <button type="button" class="linkbtn" id="btn-import">Restore backup</button>
+    </p>
+    <input type="file" id="import-file" accept="application/json,.json" hidden>
+  </footer>
+
   <dialog id="lightbox" class="lightbox" aria-label="Media viewer">
     <button class="lb-close" id="lb-close" aria-label="Close">×</button>
     <div id="lb-body"></div>
     <div class="lb-foot"><span id="lb-name"></span> <a id="lb-open" target="_blank" rel="noopener">Open in new tab ↗</a></div>
   </dialog>
 
+  <script src="store.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -31,10 +31,11 @@ const MIME = {
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // ---------- storage ----------
-let db = { projectName: 'Project Milestones', milestones: [] };
+let db = { projectName: 'Project Milestones', processes: [], milestones: [] };
 try {
   const loaded = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  db = { projectName: loaded.projectName || db.projectName, milestones: loaded.milestones || [] };
+  // Older files have no processes / processId; they load as "unassigned".
+  db = { projectName: loaded.projectName || db.projectName, processes: loaded.processes || [], milestones: loaded.milestones || [] };
 } catch (e) {
   if (e.code !== 'ENOENT') {
     console.error(`Could not read ${DB_FILE}: ${e.message}\nRefusing to start so existing data is not overwritten.`);
@@ -100,6 +101,34 @@ const isValidDate = (s) => {
   return !isNaN(d) && d.toISOString().slice(0, 10) === s;
 };
 
+const COLOR_RE = /^#[0-9a-f]{6}$/i;
+
+// Returns the cleaned fields, or { errors } / { error } describing what is wrong.
+function validateMilestone(body) {
+  const v = {
+    date: cleanText(body.date, 10),
+    name: cleanText(body.name, 200),
+    team: cleanText(body.team, 200),
+    notes: cleanText(body.notes, 10000),
+    // an unknown / deleted process id is treated as "no process"
+    processId: db.processes.some((p) => p.id === body.processId) ? body.processId : null,
+  };
+  const errors = {};
+  if (!isValidDate(v.date)) errors.date = 'Please pick a date.';
+  if (!v.name) errors.name = 'Milestone name is required.';
+  if (!v.team) errors.team = 'Responsible team is required.';
+  return Object.keys(errors).length ? { errors } : v;
+}
+
+function validateProcess(body, others) {
+  const name = cleanText(body.name, 60);
+  const color = typeof body.color === 'string' ? body.color.trim().toLowerCase() : '';
+  if (!name) return { error: 'Process name is required.' };
+  if (!COLOR_RE.test(color)) return { error: 'Please pick a colour.' };
+  if (others.some((o) => o.name.toLowerCase() === name.toLowerCase())) return { error: `A process called "${name}" already exists.` };
+  return { name, color };
+}
+
 // ---------- API ----------
 async function handleApi(req, res, url) {
   const parts = url.pathname.split('/').filter(Boolean); // ['api', ...]
@@ -116,23 +145,37 @@ async function handleApi(req, res, url) {
     return send(res, 200, { projectName: name });
   }
 
+  if (parts[1] === 'processes') {
+    if (parts.length === 2 && method === 'POST') {
+      const v = validateProcess(await readJson(req), db.processes);
+      if (v.error) return send(res, 400, { error: v.error });
+      const proc = { id: newId(), ...v };
+      db.processes.push(proc);
+      await save();
+      return send(res, 201, proc);
+    }
+    const proc = db.processes.find((x) => x.id === parts[2]);
+    if (!proc) return send(res, 404, { error: 'Process not found.' });
+    if (parts.length === 3 && method === 'PUT') {
+      const v = validateProcess(await readJson(req), db.processes.filter((x) => x !== proc));
+      if (v.error) return send(res, 400, { error: v.error });
+      Object.assign(proc, v);
+      await save();
+      return send(res, 200, proc);
+    }
+    if (parts.length === 3 && method === 'DELETE') {
+      db.processes = db.processes.filter((x) => x !== proc);
+      for (const m of db.milestones) if (m.processId === proc.id) m.processId = null; // unassign, keep the milestones
+      await save();
+      return send(res, 200, { ok: true });
+    }
+  }
+
   if (parts[1] === 'milestones') {
     if (parts.length === 2 && method === 'POST') {
-      const body = await readJson(req);
-      const m = {
-        id: newId(),
-        date: cleanText(body.date, 10),
-        name: cleanText(body.name, 200),
-        team: cleanText(body.team, 200),
-        notes: cleanText(body.notes, 10000),
-        media: [],
-        createdAt: new Date().toISOString(),
-      };
-      const errors = {};
-      if (!isValidDate(m.date)) errors.date = 'Please pick a date.';
-      if (!m.name) errors.name = 'Milestone name is required.';
-      if (!m.team) errors.team = 'Responsible team is required.';
-      if (Object.keys(errors).length) return send(res, 400, { error: 'Validation failed', errors });
+      const v = validateMilestone(await readJson(req));
+      if (v.errors) return send(res, 400, { error: 'Validation failed', errors: v.errors });
+      const m = { id: newId(), ...v, media: [], createdAt: new Date().toISOString() };
       db.milestones.push(m);
       await save();
       return send(res, 201, m);
@@ -140,6 +183,23 @@ async function handleApi(req, res, url) {
 
     const m = db.milestones.find((x) => x.id === parts[2]);
     if (!m) return send(res, 404, { error: 'Milestone not found.' });
+
+    if (parts.length === 3 && method === 'PUT') {
+      const v = validateMilestone(await readJson(req));
+      if (v.errors) return send(res, 400, { error: 'Validation failed', errors: v.errors });
+      Object.assign(m, v);
+      await save();
+      return send(res, 200, m);
+    }
+
+    if (parts[3] === 'media' && parts.length === 5 && method === 'DELETE') {
+      const item = m.media.find((f) => f.id === parts[4]);
+      if (!item) return send(res, 404, { error: 'Media not found.' });
+      m.media = m.media.filter((f) => f !== item);
+      await save();
+      await fsp.unlink(path.join(UPLOAD_DIR, item.file)).catch(() => {});
+      return send(res, 200, { ok: true });
+    }
 
     // Upload one file: raw body, original name in ?filename=
     if (parts[3] === 'media' && parts.length === 4 && method === 'POST') {

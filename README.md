@@ -40,7 +40,9 @@ Open http://localhost:3000. (Use `PORT=8080 npm start` to change the port, `HOST
   - **Responsible team** (required)
   - **Notes** (optional)
 - After saving, the app asks **"Do you have more milestones to add?"** — add another or go to the timeline.
-- **Timeline** — every milestone date is a node on the timeline. Click a date to expand the three fields and any media (click an image/PDF to view it full-size). Sort oldest/newest first, expand/collapse all, or delete a milestone. Click the project name in the header to rename it.
+- **Processes & colours** — define processes (e.g. Design, Procurement, Construction), each with a name and a colour, via the **Processes & colours** button. Assign a milestone to a process on the form (optional). Its date badge, dot and card edge then use that colour.
+- **Edit** — every milestone has an **Edit** button (change anything, remove or add files). The **Process** dropdown inside an expanded milestone assigns a process instantly, handy for tagging older entries.
+- **Timeline** — every milestone date is a node on the timeline. Click a date to expand the three fields and any media (click an image/PDF to view it full-size). Sort oldest/newest first, expand/collapse all, filter by process using the colour chips, switch to **Group by process** to see one timeline per process, or delete a milestone. Milestones with no process show in grey once any process exists. Click the project name in the header to rename it.
 
 ## Local server data
 
@@ -59,7 +61,7 @@ Nothing is wiped between uses or restarts. Everything lives in `data/`:
 npm test
 ```
 
-API smoke test (validation, uploads, file-type checking, path traversal, persistence across restart, delete). Uses a temporary data folder, so it never touches your real data.
+API smoke test (validation, processes, editing, uploads, file-type checking, path traversal, persistence across restart, delete). Uses a temporary data folder, so it never touches your real data.
 
 ## Notes
 

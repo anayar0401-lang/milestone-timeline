@@ -32,8 +32,8 @@
     <!-- ADD VIEW -->
     <section id="view-add" hidden>
       <form id="form" class="card" novalidate>
-        <h2>Add a milestone</h2>
-        <p class="muted lead">Pick the date, attach any supporting media, then describe what happened.</p>
+        <h2 id="formTitle">Add a milestone</h2>
+        <p class="muted lead" id="formLead">Pick the date, attach any supporting media, then describe what happened.</p>
 
         <div class="field" data-field="date">
           <label for="date">Date <span class="req" aria-hidden="true">*</span></label>
@@ -49,6 +49,7 @@
             <div class="muted small">PNG, JPG, GIF, WebP or PDF · up to 50 MB each</div>
           </div>
           <input type="file" id="files" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" multiple hidden>
+          <ul id="existing" class="pending" aria-label="Files already attached" hidden></ul>
           <ul id="pending" class="pending" aria-live="polite"></ul>
         </div>
 
@@ -65,12 +66,21 @@
         </div>
 
         <div class="field">
+          <label for="process">Process <span class="opt">(optional)</span></label>
+          <div class="row">
+            <select id="process" name="process"></select>
+            <button type="button" class="linkbtn" id="btn-manage">Manage processes &amp; colours</button>
+          </div>
+        </div>
+
+        <div class="field">
           <label for="notes">Notes <span class="opt">(optional)</span></label>
           <textarea id="notes" name="notes" rows="5" maxlength="10000" placeholder="What happened? Was it hit, missed, delayed? Why?"></textarea>
         </div>
 
         <div class="actions">
           <button type="submit" class="btn primary" id="save">Save milestone</button>
+          <a class="btn" id="cancel-edit" href="#/timeline" hidden>Cancel</a>
           <span id="progress" class="muted small" aria-live="polite"></span>
         </div>
       </form>
@@ -96,15 +106,24 @@
         <div class="toolbar-actions">
           <button class="btn small" id="btn-sort">Oldest first</button>
           <button class="btn small" id="btn-toggle">Expand all</button>
+          <button class="btn small" id="btn-processes">Processes &amp; colours</button>
           <a class="btn small primary" href="#/add">+ Add milestone</a>
         </div>
+      </div>
+      <div class="filters" id="filters" hidden>
+        <div class="seg" role="group" aria-label="Timeline layout">
+          <button type="button" class="seg-btn" id="seg-chrono">One timeline</button>
+          <button type="button" class="seg-btn" id="seg-process">Group by process</button>
+        </div>
+        <div class="chips" id="chips" role="group" aria-label="Filter by process"></div>
       </div>
       <div id="empty" class="card center" hidden>
         <h2>No milestones yet</h2>
         <p class="muted">Add your first milestone to start building the project history.</p>
         <a class="btn primary" href="#/add">Add the first milestone</a>
       </div>
-      <ol id="timeline" class="timeline"></ol>
+      <p id="nomatch" class="muted center" hidden>No milestones match this filter.</p>
+      <div id="timeline"></div>
     </section>
   </main>
 
@@ -117,6 +136,25 @@
     </p>
     <input type="file" id="import-file" accept="application/json,.json" hidden>
   </footer>
+
+  <dialog id="procdlg" class="dlg" aria-label="Processes and colours">
+    <div class="dlg-head">
+      <h2>Processes &amp; colours</h2>
+      <button type="button" class="dlg-close" id="proc-close" aria-label="Close">×</button>
+    </div>
+    <p class="muted small">Give each process a name and a colour. Milestones assigned to a process show in its colour, and the timeline can be filtered or grouped by process.</p>
+    <p class="error" id="proc-error" role="alert" hidden></p>
+    <ul id="proc-list" class="proc-list"></ul>
+    <form id="proc-form" class="proc-add" novalidate>
+      <h3>Add a process</h3>
+      <div class="proc-add-row">
+        <input type="color" id="proc-color" aria-label="Colour" value="#4f46e5">
+        <input type="text" id="proc-name" maxlength="60" placeholder="e.g. Design, Procurement, Construction" aria-label="Process name" autocomplete="off">
+        <button type="submit" class="btn primary small">Add</button>
+      </div>
+      <div class="swatches" id="swatches" aria-label="Suggested colours"></div>
+    </form>
+  </dialog>
 
   <dialog id="lightbox" class="lightbox" aria-label="Media viewer">
     <button class="lb-close" id="lb-close" aria-label="Close">×</button>

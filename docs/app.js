@@ -12,6 +12,7 @@ const state = {
   projectName: '', processes: [], milestones: [],
   newestFirst: false, open: new Set(), pending: [],
   groupBy: lsGet('mt.groupBy') === 'process', filter: 'all', // 'all' | 'none' | <processId>
+  present: false, // Share view (clean layout for screenshots / PDF)
   editing: null, // { id, removed:Set, media:[] } while editing an existing milestone
   lastProcess: '', showNext: false,
 };
@@ -72,6 +73,7 @@ function route() {
   if (edit) startEdit(edit[1]);
   else if (state.editing) endEdit();
   const editing = !!state.editing;
+  if (view !== 'timeline' && state.present) setPresent(false);
   for (const v of ['add', 'next', 'timeline']) $('view-' + v).hidden = true;
   $('view-' + (view === 'add' && state.showNext && !editing ? 'next' : view)).hidden = false;
   $('tab-timeline').classList.toggle('active', view === 'timeline');
@@ -304,6 +306,7 @@ function renderFilters() {
 function renderTimeline() {
   renderFilters();
   const list = visibleMilestones();
+  renderShareHead(list);
   const total = state.milestones.length;
   $('empty').hidden = total > 0;
   $('nomatch').hidden = !(total > 0 && list.length === 0);
@@ -381,7 +384,7 @@ function entryNode(m) {
   const dl = el('dl', { class: 'details' },
     kv('Milestone name', m.name, 'big'),
     kv('Responsible team', m.team),
-    el('div', { class: 'kv' }, el('dt', { text: 'Process' }), el('dd', {}, state.processes.length ? procSelect : el('span', { class: 'none', text: 'None — set up processes with the “Processes & colours” button' }))),
+    el('div', { class: 'kv kv-proc' }, el('dt', { text: 'Process' }), el('dd', {}, state.processes.length ? procSelect : el('span', { class: 'none', text: 'None — set up processes with the “Processes & colours” button' }))),
     kv('Notes', m.notes, m.notes ? '' : 'none', 'No notes added'));
   if (m.media.length) {
     dl.append(el('div', { class: 'kv' }, el('dt', { text: 'Media' }),
@@ -420,6 +423,61 @@ $('btn-toggle').addEventListener('click', () => {
 });
 $('seg-chrono').addEventListener('click', () => { state.groupBy = false; lsSet('mt.groupBy', 'chrono'); renderTimeline(); });
 $('seg-process').addEventListener('click', () => { state.groupBy = true; lsSet('mt.groupBy', 'process'); renderTimeline(); });
+
+// ---------- share view (screenshots / PDF) & theme ----------
+function renderShareHead(list) {
+  $('share-title').textContent = state.projectName;
+  const proc = procById(state.filter);
+  const scope = state.filter === 'none' ? ' · No process' : proc ? ` · ${proc.name}` : '';
+  const asOf = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(new Date());
+  $('share-sub').textContent = `Milestone timeline${scope} · ${plural(list.length, 'milestone')} · as of ${asOf}`;
+  $('share-legend').replaceChildren(...state.processes
+    .map((p) => ({ p, n: list.filter((m) => m.processId === p.id).length }))
+    .filter((x) => x.n)
+    .map(({ p, n }) => { const pill = el('span', { class: 'pill' }, el('span', { class: 'pill-text', text: `${p.name} · ${n}` })); colorVars(pill, p.color); return pill; }));
+}
+
+// A hint that must never end up in a screenshot: it hides itself after a few seconds, and immediately on any
+// key press / click / scroll / touch (taking a screenshot starts with one of those).
+let toastTimer;
+const DISMISS = ['keydown', 'mousedown', 'wheel', 'touchstart'];
+function hideToast() {
+  $('toast').classList.remove('show');
+  clearTimeout(toastTimer);
+  for (const ev of DISMISS) document.removeEventListener(ev, hideToast, true);
+}
+function toast(msg, ms = 4000) {
+  hideToast();
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  toastTimer = setTimeout(hideToast, ms);
+  for (const ev of DISMISS) document.addEventListener(ev, hideToast, true); // safe: the opening click's mousedown has already happened
+}
+
+function setPresent(on) {
+  state.present = on;
+  document.body.classList.toggle('share', on);
+  if (on) { window.scrollTo(0, 0); toast('Share view · click a card to expand · E expand all · T light/dark · P save as PDF · Esc exit'); }
+  else hideToast();
+}
+$('btn-share').addEventListener('click', () => setPresent(true));
+document.addEventListener('keydown', (e) => {
+  if (!state.present || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (document.querySelector('dialog[open]') || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'escape') setPresent(false);
+  else if (k === 'e') $('btn-toggle').click();
+  else if (k === 't') $('btn-theme').click();
+  else if (k === 'p') window.print();
+});
+
+// light / dark: follows the system until the user picks one
+function applyTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
+applyTheme(lsGet('mt.theme'));
+$('btn-theme').addEventListener('click', () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  applyTheme(next); lsSet('mt.theme', next);
+});
 
 // ---------- processes & colours dialog ----------
 const procDlg = $('procdlg');

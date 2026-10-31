@@ -11,6 +11,17 @@ Two ways to run it — same app, same screens:
 
 The app picks automatically: if a Node server is answering, it uses that; otherwise it saves in the browser.
 
+## Sharing with others (screenshots & PDF)
+
+Data stays in your browser, so the way to share is a screenshot or PDF.
+
+- Click **Share view** on the timeline. Controls, filters and the footer disappear, and a title header appears (project name, what's shown, "as of" date, colour legend). The shortcut hint hides itself on your first key press or click, so it never ends up in your screenshot.
+  - Click a card to expand/collapse it, or press **E** to expand/collapse all.
+  - Pick a process chip *before* entering Share view to share just that process; choose **Group by process** for one timeline per process.
+  - **T** switches light/dark (the ◐ button in the top bar does the same; your choice is remembered). Light usually looks best in email.
+  - **P** opens the print dialog, choose *Save as PDF*. Printing is always white, clean and page-break-friendly, whatever the screen theme. Good for timelines too long for one screenshot.
+  - **Esc** returns to the normal view.
+
 ## Host on GitHub Pages
 
 1. Push this repo to GitHub (public repo for the free plan).
@@ -55,13 +66,17 @@ Nothing is wiped between uses or restarts. Everything lives in `data/`:
 
 `data/` contents are git-ignored so demo data never gets pushed. Back it up by copying that folder. Use `DATA_DIR=/some/path npm start` to keep data elsewhere. To start fresh, stop the server and delete `data/milestones.json` and `data/uploads/*`.
 
+## Developing
+
+After editing anything in `docs/*.js` or `docs/styles.css`, run `npm run stamp`. It writes a content hash into the `<script>`/`<link>` URLs in `docs/index.html` so browsers can never mix a new page with cached old scripts after a deploy (GitHub Pages lets browsers cache files for ~10 minutes). `npm test` fails if the stamps are out of date.
+
 ## Tests
 
 ```bash
 npm test
 ```
 
-API smoke test (validation, processes, editing, uploads, file-type checking, path traversal, persistence across restart, delete). Uses a temporary data folder, so it never touches your real data.
+Checks the cache-busting stamps, then an API smoke test (validation, processes, editing, uploads, file-type checking, path traversal, persistence across restart, delete). Uses a temporary data folder, so it never touches your real data.
 
 ## Notes
 

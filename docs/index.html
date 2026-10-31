@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Milestone Timeline</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Ccircle cx='16' cy='16' r='5' fill='white'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=194f2a02">
 </head>
 <body>
   <header class="topbar">
@@ -22,6 +22,9 @@
       <nav class="tabs" aria-label="Views">
         <a href="#/timeline" id="tab-timeline" class="tab">Timeline <span class="count" id="count">0</span></a>
         <a href="#/add" id="tab-add" class="tab">+ Add milestone</a>
+        <button type="button" class="iconbtn" id="btn-theme" aria-label="Switch between light and dark" title="Switch between light and dark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>
+        </button>
       </nav>
     </div>
   </header>
@@ -101,12 +104,18 @@
 
     <!-- TIMELINE VIEW -->
     <section id="view-timeline" hidden>
+      <div class="share-head" id="share-head">
+        <h2 id="share-title"></h2>
+        <p id="share-sub"></p>
+        <div class="share-legend" id="share-legend"></div>
+      </div>
       <div class="toolbar">
         <div class="muted" id="summary"></div>
         <div class="toolbar-actions">
           <button class="btn small" id="btn-sort">Oldest first</button>
           <button class="btn small" id="btn-toggle">Expand all</button>
           <button class="btn small" id="btn-processes">Processes &amp; colours</button>
+          <button class="btn small" id="btn-share" title="Clean view for screenshots or PDF">Share view</button>
           <a class="btn small primary" href="#/add">+ Add milestone</a>
         </div>
       </div>
@@ -137,6 +146,8 @@
     <input type="file" id="import-file" accept="application/json,.json" hidden>
   </footer>
 
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
   <dialog id="procdlg" class="dlg" aria-label="Processes and colours">
     <div class="dlg-head">
       <h2>Processes &amp; colours</h2>
@@ -162,7 +173,7 @@
     <div class="lb-foot"><span id="lb-name"></span> <a id="lb-open" target="_blank" rel="noopener">Open in new tab ↗</a></div>
   </dialog>
 
-  <script src="store.js"></script>
-  <script src="app.js"></script>
+  <script src="store.js?v=9ef6ed29"></script>
+  <script src="app.js?v=2ad152fc"></script>
 </body>
 </html>

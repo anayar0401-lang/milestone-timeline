@@ -5,8 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/smoke.test.js"
+    "test": "node scripts/stamp.js --check && node test/smoke.test.js",
+    "stamp": "node scripts/stamp.js"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "MIT"
 }

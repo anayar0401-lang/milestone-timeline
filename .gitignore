@@ -1,0 +1,7 @@
+node_modules/
+# Local project data (milestones + uploaded media) stays on the machine running the app
+data/milestones.json
+data/milestones.json.tmp
+data/uploads/*
+!data/uploads/.gitkeep
+.DS_Store

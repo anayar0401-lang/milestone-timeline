@@ -146,3 +146,4 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); box-sh
 .foot { padding-bottom: 48px; text-align: center; }
 .linkbtn { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .linkbtn:hover { filter: brightness(1.15); }
+.linkbtn.danger { color: var(--danger); }

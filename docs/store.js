@@ -160,6 +160,12 @@ function browserStore() {
       await done(t);
     },
 
+    async clearAll() {
+      const t = await tx(['meta', 'milestones', 'files'], 'readwrite');
+      for (const name of ['meta', 'milestones', 'files']) t.objectStore(name).clear();
+      await done(t);
+    },
+
     // Single JSON file containing everything (media embedded as data URLs).
     async exportBackup() {
       const t = await tx(['meta', 'milestones', 'files'], 'readonly');

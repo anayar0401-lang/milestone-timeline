@@ -23,6 +23,7 @@ The repo contains no project data, so a public repo is fine. Your milestones liv
 - Use the same browser and device each time; don't use a private/incognito window.
 - Don't "clear site data" for the site. The app asks the browser to keep its data, but it can't force it.
 - Use **Download backup** (footer) before the demo and whenever you've added a lot. **Restore backup** adds back anything missing and never deletes or overwrites existing entries.
+- **Clear all data** (footer) wipes this browser's milestones and files so you can start fresh. It asks you to type `CLEAR` first.
 
 ## Run locally with Node
 

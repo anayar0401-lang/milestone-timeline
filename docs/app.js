@@ -284,6 +284,19 @@ $('import-file').addEventListener('change', async (e) => {
   } catch (err) { showBanner(err.message); }
 });
 
+$('btn-clear').addEventListener('click', async () => {
+  const n = state.milestones.length;
+  const answer = prompt(`This permanently deletes all ${n} milestone${n === 1 ? '' : 's'} and their files from this browser.\n\nTip: use "Download backup" first if you might want them back.\n\nType CLEAR to confirm.`);
+  if (answer === null) return;
+  if (answer.trim() !== 'CLEAR') { alert('Nothing was deleted — you need to type CLEAR exactly.'); return; }
+  try {
+    await store.clearAll();
+    state.open = new Set();
+    await load();
+    location.hash = '#/add'; route();
+  } catch (e) { showBanner('Could not clear data: ' + e.message); }
+});
+
 // ---------- boot ----------
 detectStore().then((s) => {
   store = s;
